@@ -40,6 +40,11 @@
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value="com.bernd.buddytracker.MainActivity" />
         </activity>
+        
+        <activity
+            android:name=".ProfileSettingsActivity"
+            android:label="@string/title_activity_profile_settings" >
+        </activity>
     </application>
 
 </manifest>

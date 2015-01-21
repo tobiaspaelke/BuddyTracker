@@ -32,6 +32,14 @@ public class MainActivity extends ActionBarActivity {
                 startActivity(new Intent(MainActivity.this,CheckStatusActivity.class));
             }
         });
+
+        Button btn_profile = (Button) findViewById(R.id.btn_profile);
+        btn_profile.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startActivity(new Intent(MainActivity.this,ProfileSettingsActivity.class));
+            }
+        });
     }
 
 
