@@ -9,6 +9,9 @@
     <string name="btn_connect">Mit Buddies verbinden</string>
     <string name="btn_settings">Profil bearbeiten</string>
     <string name="btn_scan">Scan</string>
+    <string name="btn_cancel">Abbrechen</string>
+    <string name="btn_save">Speichern</string>
+    <string name="title_activity_profile_settings">ProfileSettingsActivity</string>
     <string name="title_activity_check_status">Buddystatus überprüfen</string>
 
 </resources>
