@@ -2,7 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.bernd.buddytracker" >
 
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <application
         android:allowBackup="true"
@@ -22,8 +22,10 @@
             android:name=".ConnectActivity"
             android:label="@string/title_activity_connect" >
         </activity>
+        <activity
+            android:name=".ProfileSettingsActivity"
+            android:label="@string/title_activity_profile_settings" >
+        </activity>
     </application>
-
-
 
 </manifest>
