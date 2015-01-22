@@ -11,7 +11,8 @@
     <string name="btn_scan">Scan</string>
     <string name="btn_cancel">Abbrechen</string>
     <string name="btn_save">Speichern</string>
-    <string name="title_activity_profile_settings">ProfileSettingsActivity</string>
+    <string name="edit_name">Name</string>
+    <string name="title_activity_profile_settings">Profil bearbeiten</string>
     <string name="title_activity_check_status">Buddystatus überprüfen</string>
 
 </resources>
