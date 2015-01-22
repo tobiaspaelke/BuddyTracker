@@ -1,27 +1,39 @@
 package com.bernd.buddytracker;
 
 import android.app.AlertDialog;
+import android.app.ListFragment;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.net.wifi.WifiManager;
+import android.net.wifi.p2p.WifiP2pDevice;
+import android.net.wifi.p2p.WifiP2pDeviceList;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.support.v7.app.ActionBarActivity;
 import android.view.KeyEvent;
+import android.view.View;
+import android.widget.Button;
+import android.widget.ListView;
+import android.widget.Toast;
+
+import java.util.Collection;
 
 public class ConnectActivity extends ActionBarActivity {
     private static final String TAG = ConnectActivity.class.getSimpleName();
     //FALSE, wenn Activity nicht sichtbar, TRUE wenn Activity läuft
+    //TODO active unnötig wenn man den receiver bei resume und pause an- bzw abmeldet
     public static boolean active = false;
-    private AlertDialog wifiAlertDialog;
+    public AlertDialog wifiAlertDialog;
+    public ListView peerListView;
 
+    //WIFI Direct setup
     WifiP2pManager mManager;
     WifiP2pManager.Channel mChannel;
-    BroadcastReceiver mReceiver;
+    WifiDirectBroadcastReceiver wifiDirectReceiver;
 
     IntentFilter wifiStateFilter, wifiDirectFilter;
 
@@ -58,17 +70,44 @@ public class ConnectActivity extends ActionBarActivity {
         wifiStateFilter.addAction(WifiStateChangedReceiver.INTENT_FILTER_DISMISS_ALERTDIALOG);
 
         //receiver mit gebautem Filter dynamisch registrieren
-        registerReceiver(wifiStateReceiver, wifiStateFilter);
+        //registerReceiver(wifiStateReceiver, wifiStateFilter);
 
-        mManager = (WifiP2pManager) getSystemService(Context.WIFI_P2P_SERVICE);
-        mChannel = mManager.initialize(this, getMainLooper(), null);
-        mReceiver = new WifiDirectBroadcastReceiver(mManager, mChannel, this);
-
+        //Filter für WifiDirect Receiver
         wifiDirectFilter = new IntentFilter();
         wifiDirectFilter.addAction(WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION);
         wifiDirectFilter.addAction(WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION);
         wifiDirectFilter.addAction(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION);
         wifiDirectFilter.addAction(WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION);
+
+        //WIFI Direct setup
+        mManager = (WifiP2pManager) getSystemService(Context.WIFI_P2P_SERVICE);
+        mChannel = mManager.initialize(this, getMainLooper(), null);
+        wifiDirectReceiver = new WifiDirectBroadcastReceiver(mManager, mChannel, this);
+
+        //ListView und Adapter verbinden
+        peerListView = (ListView) findViewById(R.id.listView_peerlist);
+        peerListView.setAdapter(new WifiP2pDeviceAdapter(this));
+
+        Button btn_scan = (Button) findViewById(R.id.btn_scan);
+        btn_scan.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                mManager.discoverPeers(mChannel, new WifiP2pManager.ActionListener() {
+                    @Override
+                    public void onSuccess() {
+                        Toast toast = Toast.makeText(getApplicationContext(), "Scan erfolgreich" ,Toast.LENGTH_LONG);
+                        toast.show();
+                    }
+
+                    @Override
+                    public void onFailure(int reasonCode) {
+                        //TODO dialog zeigen, dass scan fehlschlug
+                        Toast toast = Toast.makeText(getApplicationContext(), "Scan schlug fehl" ,Toast.LENGTH_LONG);
+                        toast.show();
+                    }
+                });
+            }
+        });
     }
 
     @Override
@@ -83,15 +122,17 @@ public class ConnectActivity extends ActionBarActivity {
         //WLAN aus, also Alertdialog zeigen
         if (!wifiIsEnabled(this))
             wifiAlertDialog.show();
-        registerReceiver(mReceiver, wifiDirectFilter);
+        //WifiDirectReceiver registrieren
+        registerReceiver(wifiDirectReceiver, wifiDirectFilter);
     }
 
     @Override
     public void onPause() {
         super.onPause();
-        //TODO active = false in onResume reicht, oder?
+        //TODO active = false an dieser stelle reicht, oder?
         active = false;
-        unregisterReceiver(mReceiver);
+        //WifiDirectReceiver entfernen
+        unregisterReceiver(wifiDirectReceiver);
     }
 
     @Override
@@ -106,7 +147,7 @@ public class ConnectActivity extends ActionBarActivity {
         active = false;
 
         //nicht vergessen den dynamisch registrieren Broadcastreceiver wieder zu entfernen
-        unregisterReceiver(wifiStateReceiver);
+        //unregisterReceiver(wifiStateReceiver);
     }
 
     /**
