@@ -10,6 +10,7 @@ import android.net.wifi.WifiManager;
 import android.net.wifi.p2p.WifiP2pDevice;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.os.Bundle;
+import android.os.CountDownTimer;
 import android.provider.Settings;
 import android.support.v7.app.ActionBarActivity;
 import android.view.KeyEvent;
@@ -24,7 +25,12 @@ public class ConnectActivity extends ActionBarActivity {
     public AlertDialog wifiAlertDialog;
     //wifiEnablingProgressDialog hat nur den Zweck ein Feedback zu geben, dass WIFI Status=Enabling, da ansonsten noch immer angezeigt wird, dass WLAN aus ist
     public ProgressDialog wifiEnablingProgressDialog;
+
+    private ProgressDialog scanProgressDialog;
     public ListView peerListView;
+
+
+    private CountDownTimer countDownTimer;
 
     //WIFI Direct
     WifiP2pManager mManager;
@@ -40,9 +46,9 @@ public class ConnectActivity extends ActionBarActivity {
 
         //Dialoge bauen
         wifiAlertDialog = createWifiAlertDialog();
-        wifiEnablingProgressDialog = createProgressDialog();
+        wifiEnablingProgressDialog = createProgressDialog(getString(R.string.loading),getString(R.string.wdirect_activation));
+        scanProgressDialog = createProgressDialog(getString(R.string.searchPeers),"");
 
-        //Filter für WifiDirect Receiver
         wifiDirectFilter = new IntentFilter();
         wifiDirectFilter.addAction(WifiManager.WIFI_STATE_CHANGED_ACTION);
         wifiDirectFilter.addAction(WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION);
@@ -67,25 +73,14 @@ public class ConnectActivity extends ActionBarActivity {
             }
         });
 
+        startScan();
+
         Button btn_scan = (Button) findViewById(R.id.btn_scan);
         btn_scan.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 //The discovery remains active until a connection is initiated or a p2p group is formed --> muss man also nur ein mal aufrufen
-                mManager.discoverPeers(mChannel, new WifiP2pManager.ActionListener() {
-                    @Override
-                    public void onSuccess() {
-                          //TODO Rückmeldung unnötig?
-//                        Toast toast = Toast.makeText(getApplicationContext(), "Scan erfolgreich" ,Toast.LENGTH_LONG);
-//                        toast.show();
-                    }
-
-                    @Override
-                    public void onFailure(int reasonCode) {
-                        Toast toast = Toast.makeText(getApplicationContext(), "Scan schlug fehl" ,Toast.LENGTH_LONG);
-                        toast.show();
-                    }
-                });
+                startScan();
             }
         });
     }
@@ -110,6 +105,8 @@ public class ConnectActivity extends ActionBarActivity {
         unregisterReceiver(wifiDirectReceiver);
         wifiAlertDialog.dismiss();
         wifiEnablingProgressDialog.dismiss();
+        scanProgressDialog.dismiss();
+        countDownTimer.cancel();
     }
 
     @Override
@@ -130,11 +127,11 @@ public class ConnectActivity extends ActionBarActivity {
     private AlertDialog createWifiAlertDialog() {
         AlertDialog.Builder alertDiaBuilder = new AlertDialog.Builder(this);
 
-        alertDiaBuilder.setTitle("Wifi muss eingeschaltet sein");
-        alertDiaBuilder.setMessage("Zu Einstellungen wechseln?");
+        alertDiaBuilder.setTitle(getString(R.string.wlanOn));
+        alertDiaBuilder.setMessage(getString(R.string.goToSettings));
         alertDiaBuilder.setCancelable(false);
 
-        alertDiaBuilder.setPositiveButton("ja",
+        alertDiaBuilder.setPositiveButton(getString(R.string.yes),
                 new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int which) {
                         // WLAN einstellungen öffnen
@@ -142,7 +139,7 @@ public class ConnectActivity extends ActionBarActivity {
                     }
                 });
 
-        alertDiaBuilder.setNegativeButton("nein",
+        alertDiaBuilder.setNegativeButton(getString(R.string.no),
                 new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int which) {
                         dialog.cancel();
@@ -169,11 +166,11 @@ public class ConnectActivity extends ActionBarActivity {
      *
      * @return liefert den fertigen Progressdialog zurück
      */
-    private ProgressDialog createProgressDialog() {
+    private ProgressDialog createProgressDialog(String title, String message) {
         ProgressDialog progress = new ProgressDialog(this);
         progress.setCancelable(false);
-        progress.setTitle("Loading");
-        progress.setMessage("WLAN DIRECT wird aktiviert...");
+        progress.setTitle(title);
+        progress.setMessage(message);
         progress.setOnKeyListener(new AlertDialog.OnKeyListener() {
             @Override
             public boolean onKey(DialogInterface arg0, int keyCode,
@@ -203,5 +200,57 @@ public class ConnectActivity extends ActionBarActivity {
             // WIFI ist aus
             wifiAlertDialog.show();
         }
+    }
+
+    public void startScan(){
+        Button btn_scan = (Button) findViewById(R.id.btn_scan);
+        btn_scan.setVisibility(View.INVISIBLE);
+        scanProgressDialog.show();
+        countDownTimer = new CountDownTimer(30000,30000) {
+            @Override
+            public void onTick(long millisUntilFinished) {
+
+            }
+
+            @Override
+            public void onFinish() {
+                scanProgressDialog.dismiss();
+                mManager.stopPeerDiscovery(mChannel, new WifiP2pManager.ActionListener() {
+                    @Override
+                    public void onSuccess() {
+                        Toast.makeText(ConnectActivity.this,getString(R.string.stopDiscovery),Toast.LENGTH_LONG).show();
+                        Button btn_scan = (Button) findViewById(R.id.btn_scan);
+                        btn_scan.setVisibility(View.VISIBLE);
+                    }
+
+                    @Override
+                    public void onFailure(int reason) {
+
+                    }
+                });
+            }
+        }.start();
+        mManager.discoverPeers(mChannel, new WifiP2pManager.ActionListener() {
+            @Override
+            public void onSuccess() {
+                //TODO Rückmeldung unnötig?
+//                        Toast toast = Toast.makeText(getApplicationContext(), "Scan erfolgreich" ,Toast.LENGTH_LONG);
+//                        toast.show();
+            }
+
+            @Override
+            public void onFailure(int reasonCode) {
+                Toast toast = Toast.makeText(getApplicationContext(), getString(R.string.scanFailed) ,Toast.LENGTH_LONG);
+                toast.show();
+            }
+        });
+    }
+
+    public ProgressDialog getScanProgressDialog() {
+        return scanProgressDialog;
+    }
+
+    public CountDownTimer getCountDownTimer() {
+        return countDownTimer;
     }
 }

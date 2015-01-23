@@ -8,6 +8,8 @@ import android.net.wifi.p2p.WifiP2pDevice;
 import android.net.wifi.p2p.WifiP2pDeviceList;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.util.Log;
+import android.view.View;
+import android.widget.Button;
 
 import java.util.Collection;
 
@@ -77,10 +79,16 @@ public class WifiDirectBroadcastReceiver extends BroadcastReceiver {
                                 Log.d(TAG, dev.deviceName);
                             }
                         }
+                        if(devices.isEmpty()){
+                            Button btn_scan = (Button) mActivity.findViewById(R.id.btn_scan);
+                            btn_scan.setVisibility(View.VISIBLE);
+                        }
                         //aktualisierte Peers dem Adapter übergeben
                         WifiP2pDeviceAdapter adapter = (WifiP2pDeviceAdapter) mActivity.peerListView.getAdapter();
                         adapter.updateDeviceList(devices);
                         adapter.notifyDataSetChanged();
+                        mActivity.getScanProgressDialog().dismiss();
+                        mActivity.getCountDownTimer().cancel();
                     }
                 });
             }
@@ -89,7 +97,5 @@ public class WifiDirectBroadcastReceiver extends BroadcastReceiver {
         } else if (WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION.equals(action)) {
             // Respond to this device's wifi state changing
         }
-
-
     }
 }
