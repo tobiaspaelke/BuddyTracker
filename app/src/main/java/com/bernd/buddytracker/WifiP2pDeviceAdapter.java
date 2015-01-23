@@ -67,7 +67,7 @@ public class WifiP2pDeviceAdapter extends BaseAdapter {
             holder = new ViewHolder();
             holder.name = (TextView) convertView.findViewById(R.id.item_peer_name);
             holder.macAdress = (TextView) convertView.findViewById(R.id.item_peer_mac);
-            holder.type = (TextView) convertView.findViewById(R.id.item_peer_type);
+            holder.status = (TextView) convertView.findViewById(R.id.item_peer_status);
 
             convertView.setTag(holder);
         }else{
@@ -79,7 +79,29 @@ public class WifiP2pDeviceAdapter extends BaseAdapter {
         WifiP2pDevice device = (WifiP2pDevice) getItem(position);
         holder.name.setText(device.deviceName);
         holder.macAdress.setText("MAC: "+ device.deviceAddress);
-        holder.type.setText("Typ: " + device.primaryDeviceType);
+
+        String status;
+        switch (device.status){
+            case (WifiP2pDevice.AVAILABLE):
+                status = "verfügbar";
+                break;
+            case (WifiP2pDevice.CONNECTED):
+                status = "verbunden";
+                break;
+            case (WifiP2pDevice.FAILED):
+                status = "fehlgeschlagen";
+                break;
+            case (WifiP2pDevice.INVITED):
+                status = "eingeladen";
+                break;
+            case (WifiP2pDevice.UNAVAILABLE):
+                status = "nicht verfügbar";
+                break;
+            default:
+                status="Fehler";
+
+        }
+        holder.status.setText("Status: " + status);
 
         return convertView;
     }
@@ -96,6 +118,6 @@ public class WifiP2pDeviceAdapter extends BaseAdapter {
      *
      */
     static class ViewHolder{
-        TextView name, macAdress, type;
+        TextView name, macAdress, status;
     }
 }

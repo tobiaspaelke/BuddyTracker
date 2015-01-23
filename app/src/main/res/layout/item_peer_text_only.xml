@@ -27,7 +27,7 @@
             android:textAppearance="?android:attr/textAppearanceMedium"/>
 
         <TextView
-            android:id="@+id/item_peer_type"
+            android:id="@+id/item_peer_status"
             android:layout_width="fill_parent"
             android:layout_height="wrap_content"
             android:paddingTop="4dip"

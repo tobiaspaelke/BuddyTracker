@@ -6,10 +6,10 @@ import android.content.Intent;
 import android.net.wifi.WifiManager;
 import android.net.wifi.p2p.WifiP2pDevice;
 import android.net.wifi.p2p.WifiP2pDeviceList;
+import android.net.wifi.p2p.WifiP2pInfo;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.util.Log;
-import android.view.View;
-import android.widget.Button;
+import android.widget.Toast;
 
 import java.util.Collection;
 
@@ -43,18 +43,18 @@ public class WifiDirectBroadcastReceiver extends BroadcastReceiver {
             //if (mActivity.active) {
                 if ((state == WifiManager.WIFI_STATE_ENABLING)) {
                     // WIFI wird gerade eingeschalten
-                    mActivity.wifiAlertDialog.dismiss();
-                    mActivity.wifiEnablingProgressDialog.show();
+                    mActivity.getWifiAlertDialog().dismiss();
+                    mActivity.getWifiEnablingProgressDialog().show();
                 } else if (state != WifiManager.WIFI_STATE_ENABLED) {
                     // WIFI ist aus
-                    mActivity.wifiAlertDialog.show();
+                    mActivity.getWifiAlertDialog().show();
                 }
             //}
         } else if (WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION.equals(action)) {
             //WIFI ist an
             int p2pState = intent.getIntExtra(WifiP2pManager.EXTRA_WIFI_STATE, -1);
             if ((p2pState == WifiP2pManager.WIFI_P2P_STATE_ENABLED)/* && (mActivity.active)*/){
-                mActivity.wifiEnablingProgressDialog.dismiss();
+                mActivity.getWifiEnablingProgressDialog().dismiss();
             }
         }
 
@@ -67,35 +67,43 @@ public class WifiDirectBroadcastReceiver extends BroadcastReceiver {
             // request available peers from the wifi p2p manager. This is an
             // asynchronous call and the calling activity is notified with a
             // callback on PeerListListener.onPeersAvailable()
-            if (mManager != null) {
-                mManager.requestPeers(mChannel, new WifiP2pManager.PeerListListener(){
-                    @Override
-                    public void onPeersAvailable(WifiP2pDeviceList peers){
-                        if (DEBUG)
-                            Log.d(TAG,"peerlistener wurde aufgerufen");
-                        Collection<WifiP2pDevice> devices = peers.getDeviceList();
-                        if (DEBUG) {
-                            for (WifiP2pDevice dev : devices) {
-                                Log.d(TAG, dev.deviceName);
-                            }
-                        }
-                        if(devices.isEmpty()){
-                            Button btn_scan = (Button) mActivity.findViewById(R.id.btn_scan);
-                            btn_scan.setVisibility(View.VISIBLE);
-                        }
-                        //aktualisierte Peers dem Adapter übergeben
-                        WifiP2pDeviceAdapter adapter = (WifiP2pDeviceAdapter) mActivity.peerListView.getAdapter();
-                        adapter.updateDeviceList(devices);
-                        adapter.notifyDataSetChanged();
-                        mActivity.getScanProgressDialog().dismiss();
-                        mActivity.getCountDownTimer().cancel();
-                    }
-                });
-            }
+            updatePeerList();
+
         } else if (WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION.equals(action)) {
             // Respond to new connection or disconnections
+            WifiP2pInfo info = (WifiP2pInfo) intent.getParcelableExtra(WifiP2pManager.EXTRA_WIFI_P2P_INFO);
+            if (info.groupFormed) {
+                Toast.makeText(mActivity, "Verbindung hergestellt", Toast.LENGTH_SHORT).show();
+            }else{
+                Toast.makeText(mActivity, "Verbindung getrennt", Toast.LENGTH_SHORT).show();
+            }
+            updatePeerList();
+
         } else if (WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION.equals(action)) {
             // Respond to this device's wifi state changing
+        }
+    }
+
+    private void updatePeerList(){
+        if (mManager != null) {
+            mManager.requestPeers(mChannel, new WifiP2pManager.PeerListListener() {
+                @Override
+                public void onPeersAvailable(WifiP2pDeviceList peers) {
+                    if (DEBUG)
+                        Log.d(TAG, "peerlistener wurde aufgerufen");
+                    Collection<WifiP2pDevice> devices = peers.getDeviceList();
+                    if (DEBUG) {
+                        for (WifiP2pDevice dev : devices) {
+                            Log.d(TAG, dev.deviceName);
+                        }
+                    }
+
+                    //aktualisierte Peers dem Adapter übergeben
+                    WifiP2pDeviceAdapter adapter = (WifiP2pDeviceAdapter) mActivity.getPeerListView().getAdapter();
+                    adapter.updateDeviceList(devices);
+                    adapter.notifyDataSetChanged();
+                }
+            });
         }
     }
 }
