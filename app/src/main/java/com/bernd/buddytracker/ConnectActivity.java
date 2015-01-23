@@ -7,6 +7,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.net.wifi.WifiManager;
+import android.net.wifi.p2p.WifiP2pConfig;
 import android.net.wifi.p2p.WifiP2pDevice;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.os.Bundle;
@@ -15,6 +16,7 @@ import android.provider.Settings;
 import android.support.v7.app.ActionBarActivity;
 import android.view.KeyEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.ListView;
@@ -22,13 +24,13 @@ import android.widget.Toast;
 
 public class ConnectActivity extends ActionBarActivity {
     private static final String TAG = ConnectActivity.class.getSimpleName();
-    public AlertDialog wifiAlertDialog;
+
     //wifiEnablingProgressDialog hat nur den Zweck ein Feedback zu geben, dass WIFI Status=Enabling, da ansonsten noch immer angezeigt wird, dass WLAN aus ist
-    public ProgressDialog wifiEnablingProgressDialog;
-
+    private ProgressDialog wifiEnablingProgressDialog;
     private ProgressDialog scanProgressDialog;
-    public ListView peerListView;
+    private AlertDialog wifiAlertDialog;
 
+    private ListView peerListView;
 
     private CountDownTimer countDownTimer;
 
@@ -61,28 +63,57 @@ public class ConnectActivity extends ActionBarActivity {
         mChannel = mManager.initialize(this, getMainLooper(), null);
         wifiDirectReceiver = new WifiDirectBroadcastReceiver(mManager, mChannel, this);
 
-        //ListView und Adapter verbinden
-        peerListView = (ListView) findViewById(R.id.listView_peerlist);
-        peerListView.setAdapter(new WifiP2pDeviceAdapter(this));
-        peerListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> parent, View view,int position, long id) {
-                WifiP2pDevice dev = (WifiP2pDevice) peerListView.getItemAtPosition(position);
-                //TODO verbindung implementieren
-                Toast.makeText(ConnectActivity.this,"Du hast auf " + dev.deviceName + " getippt",Toast.LENGTH_SHORT).show();
-            }
-        });
 
-        startScan();
 
-        Button btn_scan = (Button) findViewById(R.id.btn_scan);
+
+
+        final Button btn_scan = (Button) findViewById(R.id.btn_scan);
         btn_scan.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                //The discovery remains active until a connection is initiated or a p2p group is formed --> muss man also nur ein mal aufrufen
-                startScan();
+                startScan(btn_scan);
             }
         });
+
+        //ListView und Adapter verbinden
+        peerListView = (ListView) findViewById(R.id.listView_peerlist);
+        peerListView.setAdapter(new WifiP2pDeviceAdapter(this));
+        peerListView.setOnHierarchyChangeListener(new ViewGroup.OnHierarchyChangeListener() {
+            @Override
+            public void onChildViewAdded(View parent, View child) {
+                scanProgressDialog.dismiss();
+                countDownTimer.cancel();
+            }
+
+            @Override
+            public void onChildViewRemoved(View parent, View child) {
+                if (peerListView.getAdapter().getCount()==0)
+                    btn_scan.setVisibility(View.VISIBLE);
+            }
+        });
+        peerListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view,int position, long id) {
+                final WifiP2pDevice dev = (WifiP2pDevice) peerListView.getItemAtPosition(position);
+
+                WifiP2pConfig config = new WifiP2pConfig();
+                config.deviceAddress = dev.deviceAddress;
+                mManager.connect(mChannel, config, new WifiP2pManager.ActionListener() {
+
+                    @Override
+                    public void onSuccess() {
+                        Toast.makeText(ConnectActivity.this,"Verbindung mit " + dev.deviceName + " initialisiert",Toast.LENGTH_SHORT).show();
+                    }
+
+                    @Override
+                    public void onFailure(int reason) {
+                        Toast.makeText(ConnectActivity.this,"Verbindung mit " + dev.deviceName + " konnte nicht intialisiert werden",Toast.LENGTH_SHORT).show();
+                    }
+                });
+            }
+        });
+
+        startScan(btn_scan);
     }
 
     @Override
@@ -202,10 +233,10 @@ public class ConnectActivity extends ActionBarActivity {
         }
     }
 
-    public void startScan(){
-        Button btn_scan = (Button) findViewById(R.id.btn_scan);
+    public void startScan(Button btn_scan){
         btn_scan.setVisibility(View.INVISIBLE);
         scanProgressDialog.show();
+
         countDownTimer = new CountDownTimer(30000,30000) {
             @Override
             public void onTick(long millisUntilFinished) {
@@ -230,6 +261,7 @@ public class ConnectActivity extends ActionBarActivity {
                 });
             }
         }.start();
+
         mManager.discoverPeers(mChannel, new WifiP2pManager.ActionListener() {
             @Override
             public void onSuccess() {
@@ -240,17 +272,30 @@ public class ConnectActivity extends ActionBarActivity {
 
             @Override
             public void onFailure(int reasonCode) {
-                Toast toast = Toast.makeText(getApplicationContext(), getString(R.string.scanFailed) ,Toast.LENGTH_LONG);
+                Toast toast = Toast.makeText(getApplicationContext(), getString(R.string.scanFailed), Toast.LENGTH_LONG);
                 toast.show();
             }
         });
     }
 
+    //Getters
     public ProgressDialog getScanProgressDialog() {
         return scanProgressDialog;
     }
 
     public CountDownTimer getCountDownTimer() {
         return countDownTimer;
+    }
+
+    public AlertDialog getWifiAlertDialog() {
+        return wifiAlertDialog;
+    }
+
+    public ProgressDialog getWifiEnablingProgressDialog() {
+        return wifiEnablingProgressDialog;
+    }
+
+    public ListView getPeerListView() {
+        return peerListView;
     }
 }
