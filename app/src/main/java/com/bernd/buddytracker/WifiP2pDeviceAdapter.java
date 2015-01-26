@@ -50,6 +50,34 @@ public class WifiP2pDeviceAdapter extends BaseAdapter {
         }
     }
 
+    /**
+     * Updatet die Informationen eines Devices, wenn es zu einem Buddy gehört
+     *
+     * @param dev       Das aktualisierte Device
+     * @return          gibt True zurück, wenn BuddyInfos geändert wurden
+     */
+    public boolean updateDevice(WifiP2pDevice dev){
+        AvailableBuddy oldBuddy = null;
+        AvailableBuddy updatedBuddy = new AvailableBuddy(dev, null);
+        if (availableBuddies.contains(updatedBuddy)){
+            for (AvailableBuddy tempBud : availableBuddies){
+                if (tempBud.equals(updatedBuddy)){
+                    oldBuddy = tempBud;
+                    break;
+                }
+            }
+            oldBuddy.setMyDev(dev);
+        }else{
+            return false;
+        }
+        return true;
+    }
+
+    public boolean removeDevice(WifiP2pDevice dev){
+        AvailableBuddy updatedBuddy = new AvailableBuddy(dev, null);
+        return availableBuddies.remove(updatedBuddy);
+    }
+
     @Override
     public int getCount() {
         return availableBuddies.size();
@@ -164,6 +192,10 @@ public class WifiP2pDeviceAdapter extends BaseAdapter {
             }else{
                 return false;
             }
+        }
+
+        public void setMyDev(WifiP2pDevice myDev) {
+            this.myDev = myDev;
         }
 
         public String getNickname() {

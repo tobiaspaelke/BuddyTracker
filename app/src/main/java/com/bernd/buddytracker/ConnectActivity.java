@@ -96,26 +96,7 @@ public class ConnectActivity extends ActionBarActivity {
                     btn_scan.setVisibility(View.VISIBLE);
             }
         });
-        peerListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> parent, View view,int position, long id) {
-                final WifiP2pDevice dev = (WifiP2pDevice) peerListView.getItemAtPosition(position);
-
-                WifiP2pConfig config = new WifiP2pConfig();
-                config.deviceAddress = dev.deviceAddress;
-                mManager.connect(mChannel, config, new WifiP2pManager.ActionListener() {
-                    @Override
-                    public void onSuccess() {
-                        Toast.makeText(ConnectActivity.this,"Verbindung mit " + dev.deviceName + " initialisiert",Toast.LENGTH_SHORT).show();
-                    }
-
-                    @Override
-                    public void onFailure(int reason) {
-                        Toast.makeText(ConnectActivity.this,"Verbindung mit " + dev.deviceName + " konnte nicht intialisiert werden",Toast.LENGTH_SHORT).show();
-                    }
-                });
-            }
-        });
+        peerListView.setOnItemClickListener(getPeerListViewOnItemClickListener(btn_scan));
 
         startScan(btn_scan);
     }
@@ -226,6 +207,93 @@ public class ConnectActivity extends ActionBarActivity {
         return progress;
     }
 
+    private AdapterView.OnItemClickListener getPeerListViewOnItemClickListener(final Button btn_scan){
+        return new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view,int position, long id) {
+                final WifiP2pDeviceAdapter.AvailableBuddy buddy = (WifiP2pDeviceAdapter.AvailableBuddy) peerListView.getItemAtPosition(position);
+
+                final WifiP2pDevice buddyDevice = buddy.getMyDev();
+                WifiP2pConfig config = new WifiP2pConfig();
+                config.deviceAddress = buddyDevice.deviceAddress;
+
+                switch (buddyDevice.status) {
+                    case WifiP2pDevice.AVAILABLE:
+                        mManager.connect(mChannel, config, new WifiP2pManager.ActionListener() {
+                            @Override
+                            public void onSuccess() {
+                                Toast.makeText(ConnectActivity.this,"Verbindung mit " + buddy.getMyDev().deviceName + " initialisiert",Toast.LENGTH_SHORT).show();
+                            }
+
+                            @Override
+                            public void onFailure(int reason) {
+                                Toast.makeText(ConnectActivity.this,"Verbindung mit " + buddy.getMyDev().deviceName + " konnte nicht intialisiert werden: " + reason,Toast.LENGTH_SHORT).show();
+                            }
+                        });
+                        break;
+                    case WifiP2pDevice.FAILED:
+                        WifiP2pDeviceAdapter adapter = (WifiP2pDeviceAdapter) peerListView.getAdapter();
+                        if (adapter.removeDevice(buddyDevice))
+                            adapter.notifyDataSetChanged();
+                        break;
+                    case WifiP2pDevice.INVITED:
+                        mManager.cancelConnect(mChannel, new WifiP2pManager.ActionListener() {
+                            @Override
+                            public void onSuccess() {
+                                Toast.makeText(ConnectActivity.this,"Verbindungsaufbau mit " + buddy.getMyDev().deviceName + " abgebrochen",Toast.LENGTH_SHORT).show();
+                                buddyDevice.status=(WifiP2pDevice.FAILED);
+                                WifiP2pDeviceAdapter adapter = (WifiP2pDeviceAdapter) peerListView.getAdapter();
+                                if (adapter.updateDevice(buddyDevice))
+                                    adapter.notifyDataSetChanged();
+                            }
+
+                            @Override
+                            public void onFailure(int reason) {
+                                Toast.makeText(ConnectActivity.this,"Verbindungsabbruch mit " + buddy.getMyDev().deviceName + " gescheitert",Toast.LENGTH_SHORT).show();
+                            }
+                        });
+                        break;
+                    case WifiP2pDevice.CONNECTED:
+                        //TODO disconnect
+                        break;
+                    case WifiP2pDevice.UNAVAILABLE:
+                        Toast.makeText(ConnectActivity.this, "unavailable" ,Toast.LENGTH_SHORT).show();
+                        break;
+                    default:
+                        Log.e(TAG, "Felhler in OnItemClick");
+                }
+            }
+        };
+    }
+
+
+//TODO disconnect
+//    public void disconnect() {
+//        if (mManager != null && mChannel != null) {
+//            mManager.requestGroupInfo(mChannel, new GroupInfoListener() {
+//                @Override
+//                public void onGroupInfoAvailable(WifiP2pGroup group) {
+//                    if (group != null && mManager != null && mChannel != null
+//                            && group.isGroupOwner()) {
+//                        mManager.removeGroup(mChannel, new ActionListener() {
+//
+//                            @Override
+//                            public void onSuccess() {
+//                                Log.d(TAG, "removeGroup onSuccess -");
+//                            }
+//
+//                            @Override
+//                            public void onFailure(int reason) {
+//                                Log.d(TAG, "removeGroup onFailure -" + reason);
+//                            }
+//                        });
+//                    }
+//                }
+//            });
+//        }
+//    }
+
+
     /**
      * Checkt nach onResume den WIFI status und öffnet entsprechende Dialoge
      *
@@ -291,6 +359,7 @@ public class ConnectActivity extends ActionBarActivity {
      * Nach verfügbaren Services suchen
      */
     private void startServiceDiscovery() {
+
         //Listener registrieren, die aufgerufen werden, wenn ein Service gefunden wird
         mManager.setDnsSdResponseListeners(mChannel, null, new WifiP2pManager.DnsSdTxtRecordListener() {
                     //Wird aufgerufen, wenn ein Service mit Zusatzinfos gefunden wurde
