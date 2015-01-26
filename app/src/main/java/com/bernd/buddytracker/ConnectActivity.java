@@ -10,10 +10,13 @@ import android.net.wifi.WifiManager;
 import android.net.wifi.p2p.WifiP2pConfig;
 import android.net.wifi.p2p.WifiP2pDevice;
 import android.net.wifi.p2p.WifiP2pManager;
+import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceInfo;
+import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceRequest;
 import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.provider.Settings;
 import android.support.v7.app.ActionBarActivity;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
@@ -21,6 +24,9 @@ import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.ListView;
 import android.widget.Toast;
+
+import java.util.HashMap;
+import java.util.Map;
 
 public class ConnectActivity extends ActionBarActivity {
     private static final String TAG = ConnectActivity.class.getSimpleName();
@@ -31,7 +37,6 @@ public class ConnectActivity extends ActionBarActivity {
     private AlertDialog wifiAlertDialog;
 
     private ListView peerListView;
-
     private CountDownTimer countDownTimer;
 
     //WIFI Direct
@@ -40,6 +45,10 @@ public class ConnectActivity extends ActionBarActivity {
     WifiDirectBroadcastReceiver wifiDirectReceiver;
 
     IntentFilter wifiDirectFilter;
+
+    //Services setupt (DNS-Service Discovery)
+    public static final String SERVICE_INSTANCE = "_buddytracker";
+    public static final String SERVICE_REG_TYPE = "_presence._tcp";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -62,10 +71,6 @@ public class ConnectActivity extends ActionBarActivity {
         mManager = (WifiP2pManager) getSystemService(Context.WIFI_P2P_SERVICE);
         mChannel = mManager.initialize(this, getMainLooper(), null);
         wifiDirectReceiver = new WifiDirectBroadcastReceiver(mManager, mChannel, this);
-
-
-
-
 
         final Button btn_scan = (Button) findViewById(R.id.btn_scan);
         btn_scan.setOnClickListener(new View.OnClickListener() {
@@ -99,7 +104,6 @@ public class ConnectActivity extends ActionBarActivity {
                 WifiP2pConfig config = new WifiP2pConfig();
                 config.deviceAddress = dev.deviceAddress;
                 mManager.connect(mChannel, config, new WifiP2pManager.ActionListener() {
-
                     @Override
                     public void onSuccess() {
                         Toast.makeText(ConnectActivity.this,"Verbindung mit " + dev.deviceName + " initialisiert",Toast.LENGTH_SHORT).show();
@@ -127,6 +131,8 @@ public class ConnectActivity extends ActionBarActivity {
         checkWifiStatus();
         //WifiDirectReceiver registrieren
         registerReceiver(wifiDirectReceiver, wifiDirectFilter);
+        //Lokalen Service starten
+        startRegistration();
     }
 
     @Override
@@ -138,10 +144,14 @@ public class ConnectActivity extends ActionBarActivity {
         wifiEnablingProgressDialog.dismiss();
         scanProgressDialog.dismiss();
         countDownTimer.cancel();
+        //Lokalen Service entfernen
+        clearLocalServices();
+        //Suche nach Services einstellen
+        clearRequests();
     }
 
     @Override
-    public void onStop() {
+    protected void onStop() {
         super.onStop();
     }
 
@@ -233,50 +243,157 @@ public class ConnectActivity extends ActionBarActivity {
         }
     }
 
-    public void startScan(Button btn_scan){
-        btn_scan.setVisibility(View.INVISIBLE);
+    /**
+     * Startet den Scan
+     *
+     * @param btn_scan      Scan Button
+     */
+    public void startScan(final Button btn_scan){
+        btn_scan.setVisibility(View.GONE);
         scanProgressDialog.show();
 
-        countDownTimer = new CountDownTimer(30000,30000) {
+        countDownTimer = new CountDownTimer(30000,3000) {
             @Override
             public void onTick(long millisUntilFinished) {
-
+                startServiceDiscovery();
             }
 
             @Override
             public void onFinish() {
                 scanProgressDialog.dismiss();
-                mManager.stopPeerDiscovery(mChannel, new WifiP2pManager.ActionListener() {
+                btn_scan.setVisibility(View.VISIBLE);
+            }
+        }.start();
+    }
+
+    /**
+     *  Lokalen Service hinzufügen mit Nickname als Zusatzinfo
+     */
+    private void startRegistration() {
+        Map<String, String> record = new HashMap<String, String>();
+        record.put(ProfileSettingsActivity.propNickname, ProfileSettingsActivity.exampleNickName1);
+
+        WifiP2pDnsSdServiceInfo service = WifiP2pDnsSdServiceInfo.newInstance(SERVICE_INSTANCE, SERVICE_REG_TYPE, record);
+        mManager.addLocalService(mChannel, service, new WifiP2pManager.ActionListener() {
+            @Override
+            public void onSuccess() {
+                Log.d(TAG, "Local Service hinzugefügt");
+            }
+
+            @Override
+            public void onFailure(int error) {
+                Log.e(TAG, "Local Service nicht hinzugefügt");
+            }
+        });
+    }
+
+    /**
+     * Nach verfügbaren Services suchen
+     */
+    private void startServiceDiscovery() {
+        //Listener registrieren, die aufgerufen werden, wenn ein Service gefunden wird
+        mManager.setDnsSdResponseListeners(mChannel, null, new WifiP2pManager.DnsSdTxtRecordListener() {
+                    //Wird aufgerufen, wenn ein Service mit Zusatzinfos gefunden wurde
+                    @Override
+                    public void onDnsSdTxtRecordAvailable(String fullDomainName, Map<String, String> record, WifiP2pDevice device) {
+                        //entspricht der Service unserem BuddyTracker?
+                        if (fullDomainName.contains(SERVICE_INSTANCE)){
+                            Log.d(TAG, device.deviceName + " is " + record.get(ProfileSettingsActivity.propNickname));
+                            String nick = record.get(ProfileSettingsActivity.propNickname);
+                            WifiP2pDeviceAdapter adapter = ((WifiP2pDeviceAdapter) peerListView.getAdapter());
+                            adapter.addAvailableBuddy(device, nick);
+                            adapter.notifyDataSetChanged();
+                        }
+                    }
+                });
+
+
+        //Service Request erstellen und hinzufügen
+        WifiP2pDnsSdServiceRequest serviceRequest = WifiP2pDnsSdServiceRequest.newInstance();
+        mManager.addServiceRequest(mChannel, serviceRequest,
+                new WifiP2pManager.ActionListener() {
                     @Override
                     public void onSuccess() {
-                        Toast.makeText(ConnectActivity.this,getString(R.string.stopDiscovery),Toast.LENGTH_LONG).show();
-                        Button btn_scan = (Button) findViewById(R.id.btn_scan);
-                        btn_scan.setVisibility(View.VISIBLE);
+                        Log.d(TAG,"Added service discovery request");
+                        //Request hinzugefügt --> Discovery starten
+                        discoverServices();
+                    }
+                    @Override
+                    public void onFailure(int arg0) {
+                        Log.e(TAG,"Failed adding service discovery request");
+                    }
+                });
+
+    }
+
+    /**
+     * Startet Suche nach Services
+     */
+    private void discoverServices(){
+        mManager.discoverServices(mChannel, new WifiP2pManager.ActionListener() {
+            @Override
+            public void onSuccess() {
+                Log.d(TAG, "Service discovery initiated");
+            }
+
+            @Override
+            public void onFailure(int arg0) {
+                Log.e(TAG, "Service discovery failed: " + arg0);
+            }
+        });
+    }
+
+    /**
+     * Entfernt lokale Services
+     */
+    private void clearLocalServices(){
+        mManager.clearLocalServices(mChannel, new WifiP2pManager.ActionListener() {
+            @Override
+            public void onSuccess() {
+                Log.d(TAG,"Local Services cleared");
+            }
+
+            @Override
+            public void onFailure(int reason) {
+                Log.e(TAG,"Local Services clear failed");
+            }
+        });
+    }
+
+    /**
+     * Entfernt alle Service requests.
+     *
+     * ACHTUNG!!!!!!!! Dieser Bug hat mich das ganze wochenende beschäftigt:
+     * Wenn man vorher nicht stopPeerDiscovery() aufruft, welche man vorher ja nie gestartet hat, dann funktioniert
+     * die Suche nur beim ersten mal und danach finden sich die Handys nicht mehr
+     */
+    private void clearRequests(){
+        //Muss aus unerklärlichen Gründen gemacht werden
+        mManager.stopPeerDiscovery(mChannel, new WifiP2pManager.ActionListener() {
+            @Override
+            public void onSuccess() {
+                // Service requests entfernen
+                mManager.clearServiceRequests(mChannel, new WifiP2pManager.ActionListener() {
+                    @Override
+                    public void onSuccess() {
+                        Log.d(TAG,"Service requests cleared");
                     }
 
                     @Override
                     public void onFailure(int reason) {
-
+                        Log.e(TAG,"Service requests clear failed");
                     }
                 });
             }
-        }.start();
-
-        mManager.discoverPeers(mChannel, new WifiP2pManager.ActionListener() {
-            @Override
-            public void onSuccess() {
-                //TODO Rückmeldung unnötig?
-//                        Toast toast = Toast.makeText(getApplicationContext(), "Scan erfolgreich" ,Toast.LENGTH_LONG);
-//                        toast.show();
-            }
 
             @Override
-            public void onFailure(int reasonCode) {
-                Toast toast = Toast.makeText(getApplicationContext(), getString(R.string.scanFailed), Toast.LENGTH_LONG);
-                toast.show();
+            public void onFailure(int i) {
+                Log.e(TAG, "FAILED to stop discovery");
             }
         });
     }
+
+
 
     //Getters
     public ProgressDialog getScanProgressDialog() {

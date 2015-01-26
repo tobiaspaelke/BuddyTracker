@@ -4,14 +4,9 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.net.wifi.WifiManager;
-import android.net.wifi.p2p.WifiP2pDevice;
-import android.net.wifi.p2p.WifiP2pDeviceList;
 import android.net.wifi.p2p.WifiP2pInfo;
 import android.net.wifi.p2p.WifiP2pManager;
-import android.util.Log;
 import android.widget.Toast;
-
-import java.util.Collection;
 
 /**
  * Created by Tobias on 22.01.2015.
@@ -67,24 +62,24 @@ public class WifiDirectBroadcastReceiver extends BroadcastReceiver {
             // request available peers from the wifi p2p manager. This is an
             // asynchronous call and the calling activity is notified with a
             // callback on PeerListListener.onPeersAvailable()
-            updatePeerList();
+            //updatePeerList();
 
         } else if (WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION.equals(action)) {
             // Respond to new connection or disconnections
-            WifiP2pInfo info = (WifiP2pInfo) intent.getParcelableExtra(WifiP2pManager.EXTRA_WIFI_P2P_INFO);
+            WifiP2pInfo info = intent.getParcelableExtra(WifiP2pManager.EXTRA_WIFI_P2P_INFO);
             if (info.groupFormed) {
                 Toast.makeText(mActivity, "Verbindung hergestellt", Toast.LENGTH_SHORT).show();
             }else{
                 Toast.makeText(mActivity, "Verbindung getrennt", Toast.LENGTH_SHORT).show();
             }
-            updatePeerList();
+            //updatePeerList();
 
         } else if (WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION.equals(action)) {
             // Respond to this device's wifi state changing
         }
     }
 
-    private void updatePeerList(){
+    /*private void updatePeerList(){
         if (mManager != null) {
             mManager.requestPeers(mChannel, new WifiP2pManager.PeerListListener() {
                 @Override
@@ -105,5 +100,5 @@ public class WifiDirectBroadcastReceiver extends BroadcastReceiver {
                 }
             });
         }
-    }
+    }*/
 }
