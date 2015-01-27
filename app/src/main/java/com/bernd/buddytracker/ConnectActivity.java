@@ -46,7 +46,7 @@ public class ConnectActivity extends ActionBarActivity {
 
     IntentFilter wifiDirectFilter;
 
-    //Services setupt (DNS-Service Discovery)
+    //Services setup (DNS-Service Discovery)
     public static final String SERVICE_INSTANCE = "_buddytracker";
     public static final String SERVICE_REG_TYPE = "_presence._tcp";
 
@@ -86,6 +86,7 @@ public class ConnectActivity extends ActionBarActivity {
         peerListView.setOnHierarchyChangeListener(new ViewGroup.OnHierarchyChangeListener() {
             @Override
             public void onChildViewAdded(View parent, View child) {
+                //Wenn Item in Liste, können Dialog und Timer beendet werden
                 scanProgressDialog.dismiss();
                 countDownTimer.cancel();
             }
@@ -93,6 +94,7 @@ public class ConnectActivity extends ActionBarActivity {
             @Override
             public void onChildViewRemoved(View parent, View child) {
                 if (peerListView.getAdapter().getCount()==0)
+                    //Wenn kein Item in der Liste ist, soll der Button sichtbar werden
                     btn_scan.setVisibility(View.VISIBLE);
             }
         });
@@ -207,55 +209,69 @@ public class ConnectActivity extends ActionBarActivity {
         return progress;
     }
 
+    /**
+     * Methode baut einen OnItemClickListener für das PeerListView.
+     * Diese Methode dient nur dazu dass onCreate nicht zu unübersichtlich wird
+     *
+     * @param btn_scan          Scan Button
+     * @return                  OnItemClickListener für das PeerListView
+     */
     private AdapterView.OnItemClickListener getPeerListViewOnItemClickListener(final Button btn_scan){
         return new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view,int position, long id) {
-                final WifiP2pDeviceAdapter.AvailableBuddy buddy = (WifiP2pDeviceAdapter.AvailableBuddy) peerListView.getItemAtPosition(position);
+                WifiP2pDeviceAdapter.AvailableBuddy buddy = (WifiP2pDeviceAdapter.AvailableBuddy) peerListView.getItemAtPosition(position);
 
+                //config Setup für einen Verbindungsaufbau
                 final WifiP2pDevice buddyDevice = buddy.getMyDev();
                 WifiP2pConfig config = new WifiP2pConfig();
                 config.deviceAddress = buddyDevice.deviceAddress;
 
+                //je nach Status des Devices anders reagieren
                 switch (buddyDevice.status) {
+                    //Available --> verbinden
                     case WifiP2pDevice.AVAILABLE:
                         mManager.connect(mChannel, config, new WifiP2pManager.ActionListener() {
                             @Override
                             public void onSuccess() {
-                                Toast.makeText(ConnectActivity.this,"Verbindung mit " + buddy.getMyDev().deviceName + " initialisiert",Toast.LENGTH_SHORT).show();
+                                Toast.makeText(ConnectActivity.this,"Verbindung mit " + buddyDevice.deviceName + " initialisiert",Toast.LENGTH_SHORT).show();
                             }
 
                             @Override
                             public void onFailure(int reason) {
-                                Toast.makeText(ConnectActivity.this,"Verbindung mit " + buddy.getMyDev().deviceName + " konnte nicht intialisiert werden: " + reason,Toast.LENGTH_SHORT).show();
+                                //Device nicht mehr in Reichweite? --> besser neu scannen
+                                Toast.makeText(ConnectActivity.this,"Verbindung mit " + buddyDevice.deviceName + " konnte nicht intialisiert werden: " + reason,Toast.LENGTH_SHORT).show();
+                                startScan(btn_scan);
                             }
                         });
                         break;
+                    //Verbindung fehlgeschlagen? --> bei erneutem Tipp auf das Device wird es aus der Liste entfernt
                     case WifiP2pDevice.FAILED:
                         WifiP2pDeviceAdapter adapter = (WifiP2pDeviceAdapter) peerListView.getAdapter();
                         if (adapter.removeDevice(buddyDevice))
                             adapter.notifyDataSetChanged();
                         break;
+                    //bereits eingeladen? --> Verbindungsanfrage bei erneutem antippen abbrechen
                     case WifiP2pDevice.INVITED:
                         mManager.cancelConnect(mChannel, new WifiP2pManager.ActionListener() {
                             @Override
                             public void onSuccess() {
-                                Toast.makeText(ConnectActivity.this,"Verbindungsaufbau mit " + buddy.getMyDev().deviceName + " abgebrochen",Toast.LENGTH_SHORT).show();
-                                buddyDevice.status=(WifiP2pDevice.FAILED);
-                                WifiP2pDeviceAdapter adapter = (WifiP2pDeviceAdapter) peerListView.getAdapter();
-                                if (adapter.updateDevice(buddyDevice))
-                                    adapter.notifyDataSetChanged();
+                                Toast.makeText(ConnectActivity.this,"Verbindungsaufbau mit " + buddyDevice.deviceName + " abgebrochen",Toast.LENGTH_SHORT).show();
+                                //neu scannen
+                                startScan(btn_scan);
                             }
 
                             @Override
                             public void onFailure(int reason) {
-                                Toast.makeText(ConnectActivity.this,"Verbindungsabbruch mit " + buddy.getMyDev().deviceName + " gescheitert",Toast.LENGTH_SHORT).show();
+                                Toast.makeText(ConnectActivity.this,"Verbindungsabbruch mit " + buddyDevice.deviceName + " gescheitert",Toast.LENGTH_SHORT).show();
                             }
                         });
                         break;
+                    //Wenn verbunden --> trennen
                     case WifiP2pDevice.CONNECTED:
                         //TODO disconnect
                         break;
+                    //Welches Verhalten ist hier sinnvoll???
                     case WifiP2pDevice.UNAVAILABLE:
                         Toast.makeText(ConnectActivity.this, "unavailable" ,Toast.LENGTH_SHORT).show();
                         break;
@@ -338,7 +354,7 @@ public class ConnectActivity extends ActionBarActivity {
      *  Lokalen Service hinzufügen mit Nickname als Zusatzinfo
      */
     private void startRegistration() {
-        Map<String, String> record = new HashMap<String, String>();
+        Map<String, String> record = new HashMap<>();
         record.put(ProfileSettingsActivity.propNickname, ProfileSettingsActivity.exampleNickName1);
 
         WifiP2pDnsSdServiceInfo service = WifiP2pDnsSdServiceInfo.newInstance(SERVICE_INSTANCE, SERVICE_REG_TYPE, record);
@@ -367,6 +383,7 @@ public class ConnectActivity extends ActionBarActivity {
                     public void onDnsSdTxtRecordAvailable(String fullDomainName, Map<String, String> record, WifiP2pDevice device) {
                         //entspricht der Service unserem BuddyTracker?
                         if (fullDomainName.contains(SERVICE_INSTANCE)){
+                            //Nickname extrahieren und in Ansicht einfügen
                             Log.d(TAG, device.deviceName + " is " + record.get(ProfileSettingsActivity.propNickname));
                             String nick = record.get(ProfileSettingsActivity.propNickname);
                             WifiP2pDeviceAdapter adapter = ((WifiP2pDeviceAdapter) peerListView.getAdapter());
@@ -383,13 +400,13 @@ public class ConnectActivity extends ActionBarActivity {
                 new WifiP2pManager.ActionListener() {
                     @Override
                     public void onSuccess() {
-                        Log.d(TAG,"Added service discovery request");
+                        Log.d(TAG,"service discovery request hinzugefügt");
                         //Request hinzugefügt --> Discovery starten
                         discoverServices();
                     }
                     @Override
                     public void onFailure(int arg0) {
-                        Log.e(TAG,"Failed adding service discovery request");
+                        Log.e(TAG,"service discovery request hinzufügen schlug fehl: " + arg0);
                     }
                 });
 
@@ -402,12 +419,12 @@ public class ConnectActivity extends ActionBarActivity {
         mManager.discoverServices(mChannel, new WifiP2pManager.ActionListener() {
             @Override
             public void onSuccess() {
-                Log.d(TAG, "Service discovery initiated");
+                Log.d(TAG, "Service discovery gestartet");
             }
 
             @Override
             public void onFailure(int arg0) {
-                Log.e(TAG, "Service discovery failed: " + arg0);
+                Log.e(TAG, "Service discovery fehlgeschlagen: " + arg0);
             }
         });
     }
@@ -424,7 +441,7 @@ public class ConnectActivity extends ActionBarActivity {
 
             @Override
             public void onFailure(int reason) {
-                Log.e(TAG,"Local Services clear failed");
+                Log.e(TAG,"Local Services clear fehlgeschlagen");
             }
         });
     }
@@ -433,7 +450,7 @@ public class ConnectActivity extends ActionBarActivity {
      * Entfernt alle Service requests.
      *
      * ACHTUNG!!!!!!!! Dieser Bug hat mich das ganze wochenende beschäftigt:
-     * Wenn man vorher nicht stopPeerDiscovery() aufruft, welche man vorher ja nie gestartet hat, dann funktioniert
+     * Wenn man vorher nicht stopPeerDiscovery() aufruft, welche man ja nie gestartet hat, dann funktioniert
      * die Suche nur beim ersten mal und danach finden sich die Handys nicht mehr
      */
     private void clearRequests(){
@@ -450,7 +467,7 @@ public class ConnectActivity extends ActionBarActivity {
 
                     @Override
                     public void onFailure(int reason) {
-                        Log.e(TAG,"Service requests clear failed");
+                        Log.e(TAG,"Service requests clear fehlgeschlagen");
                     }
                 });
             }

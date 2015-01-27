@@ -16,8 +16,8 @@ import java.util.ArrayList;
  * Created by Alex on 22.01.2015.
  */
 public class WifiP2pDeviceAdapter extends BaseAdapter {
-    //Liste der gefundenen Devices
-    private ArrayList<AvailableBuddy> availableBuddies = new ArrayList<AvailableBuddy>();
+    //Liste der gefundenen Devices(mit Nicknamen)
+    private ArrayList<AvailableBuddy> availableBuddies = new ArrayList<>();
 
     //der LayoutInflater entfaltet die XML Beschreibung der einzelnen Listen Items
     private final LayoutInflater inflator;
@@ -26,16 +26,6 @@ public class WifiP2pDeviceAdapter extends BaseAdapter {
         // wird für das aufblasen der XML Datei benötigt
         inflator = LayoutInflater.from(context);
     }
-
-    //    /**
-//     * Aktualisiert Liste mit den Devices
-//     *
-//     * @param collection        neue Devices
-//     */
-//    public void updateDeviceList(Collection<WifiP2pDevice> collection){
-//        availableBuddies.clear();
-//        availableBuddies.addAll(collection);
-//    }
 
     /**
      * Verfügbarer Buddy wurde gefunden und wird der Liste hinzugefügt, wenn er nicht bereits enthalten ist
@@ -66,13 +56,24 @@ public class WifiP2pDeviceAdapter extends BaseAdapter {
                     break;
                 }
             }
-            oldBuddy.setMyDev(dev);
+
+            if (oldBuddy!=null) {
+                oldBuddy.setMyDev(dev);
+                return true;
+            }else{
+                return false;
+            }
         }else{
             return false;
         }
-        return true;
     }
 
+    /**
+     * Entfernt Device aus der Liste
+     *
+     * @param dev       device, dass entfernt werden soll
+     * @return          TRUE, wenn ein Device entfernt wurde
+     */
     public boolean removeDevice(WifiP2pDevice dev){
         AvailableBuddy updatedBuddy = new AvailableBuddy(dev, null);
         return availableBuddies.remove(updatedBuddy);
