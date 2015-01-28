@@ -8,12 +8,11 @@ import android.net.wifi.p2p.WifiP2pDevice;
 import android.net.wifi.p2p.WifiP2pDeviceList;
 import android.net.wifi.p2p.WifiP2pInfo;
 import android.net.wifi.p2p.WifiP2pManager;
-import android.util.Log;
 import android.widget.Toast;
 
-import java.util.Collection;
-
 /**
+ * Broadcastreceiver für die Connectactivity
+ *
  * Created by Tobias on 22.01.2015.
  */
 public class WifiDirectBroadcastReceiver extends BroadcastReceiver {
@@ -22,13 +21,9 @@ public class WifiDirectBroadcastReceiver extends BroadcastReceiver {
     //schaltet Debugausgaben ein und aus
     private boolean DEBUG = true;
 
-    private WifiP2pManager mManager;
-    private WifiP2pManager.Channel mChannel;
     private ConnectActivity mActivity;
 
     public WifiDirectBroadcastReceiver(WifiP2pManager manager, WifiP2pManager.Channel channel, ConnectActivity activity) {
-        this.mManager = manager;
-        this.mChannel = channel;
         this.mActivity = activity;
     }
 
@@ -36,11 +31,13 @@ public class WifiDirectBroadcastReceiver extends BroadcastReceiver {
     public void onReceive(Context context, Intent intent) {
         String action = intent.getAction();
 
-        //----WIFI Statusänderungen----
-        if (WifiManager.WIFI_STATE_CHANGED_ACTION.equals(action)) {
-            int state = intent.getIntExtra(WifiManager.EXTRA_WIFI_STATE, -1);
 
-            //if (mActivity.active) {
+        switch (action) {
+            //----WIFI Statusänderungen----
+            case WifiManager.WIFI_STATE_CHANGED_ACTION:
+                int state = intent.getIntExtra(WifiManager.EXTRA_WIFI_STATE, -1);
+
+                //if (mActivity.active) {
                 if ((state == WifiManager.WIFI_STATE_ENABLING)) {
                     // WIFI wird gerade eingeschalten
                     mActivity.getWifiAlertDialog().dismiss();
@@ -49,61 +46,57 @@ public class WifiDirectBroadcastReceiver extends BroadcastReceiver {
                     // WIFI ist aus
                     mActivity.getWifiAlertDialog().show();
                 }
-            //}
-        } else if (WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION.equals(action)) {
-            //WIFI ist an
-            int p2pState = intent.getIntExtra(WifiP2pManager.EXTRA_WIFI_STATE, -1);
-            if ((p2pState == WifiP2pManager.WIFI_P2P_STATE_ENABLED)/* && (mActivity.active)*/){
-                mActivity.getWifiEnablingProgressDialog().dismiss();
-            }
-        }
-
-
-
-        //-----WIFI Direct----
-        else if (WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION.equals(action)) {
-            // Call WifiP2pManager.requestPeers() to get a list of current peers
-
-            // request available peers from the wifi p2p manager. This is an
-            // asynchronous call and the calling activity is notified with a
-            // callback on PeerListListener.onPeersAvailable()
-            updatePeerList();
-
-        } else if (WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION.equals(action)) {
-            // Respond to new connection or disconnections
-            WifiP2pInfo info = (WifiP2pInfo) intent.getParcelableExtra(WifiP2pManager.EXTRA_WIFI_P2P_INFO);
-            if (info.groupFormed) {
-                Toast.makeText(mActivity, "Verbindung hergestellt", Toast.LENGTH_SHORT).show();
-            }else{
-                Toast.makeText(mActivity, "Verbindung getrennt", Toast.LENGTH_SHORT).show();
-            }
-            updatePeerList();
-
-        } else if (WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION.equals(action)) {
-            // Respond to this device's wifi state changing
-        }
-    }
-
-    private void updatePeerList(){
-        if (mManager != null) {
-            mManager.requestPeers(mChannel, new WifiP2pManager.PeerListListener() {
-                @Override
-                public void onPeersAvailable(WifiP2pDeviceList peers) {
-                    if (DEBUG)
-                        Log.d(TAG, "peerlistener wurde aufgerufen");
-                    Collection<WifiP2pDevice> devices = peers.getDeviceList();
-                    if (DEBUG) {
-                        for (WifiP2pDevice dev : devices) {
-                            Log.d(TAG, dev.deviceName);
-                        }
-                    }
-
-                    //aktualisierte Peers dem Adapter übergeben
-                    WifiP2pDeviceAdapter adapter = (WifiP2pDeviceAdapter) mActivity.getPeerListView().getAdapter();
-                    adapter.updateDeviceList(devices);
-                    adapter.notifyDataSetChanged();
+                //}
+                break;
+            case WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION:
+                //WIFI ist an
+                int p2pState = intent.getIntExtra(WifiP2pManager.EXTRA_WIFI_STATE, -1);
+                if ((p2pState == WifiP2pManager.WIFI_P2P_STATE_ENABLED)) {
+                    mActivity.getWifiEnablingProgressDialog().dismiss();
                 }
-            });
+                break;
+
+            //-----WIFI Direct----
+            case WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION:
+                // Call WifiP2pManager.requestPeers() to get a list of current peers
+
+                // request available peers from the wifi p2p manager. This is an
+                // asynchronous call and the calling activity is notified with a
+                // callback on PeerListListener.onPeersAvailable()
+                WifiP2pDeviceList deviceList = intent.getParcelableExtra(WifiP2pManager.EXTRA_P2P_DEVICE_LIST);
+                WifiP2pDeviceAdapter adapter = (WifiP2pDeviceAdapter) mActivity.getPeerListView().getAdapter();
+
+                boolean updated = false;
+                for (WifiP2pDevice dev : deviceList.getDeviceList()) {
+                    if (adapter.updateDevice(dev)) {
+                        updated = true;
+                         if (dev.status==WifiP2pDevice.CONNECTED){
+                             BuddyManager.getInstance().addConnectedBuddy(dev);
+                         }
+                    }
+                }
+
+                if (updated)
+                    adapter.notifyDataSetChanged();
+
+                break;
+            case WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION:
+                // Respond to new connection or disconnections
+                WifiP2pInfo info = intent.getParcelableExtra(WifiP2pManager.EXTRA_WIFI_P2P_INFO);
+                if (info.groupFormed) {
+                    Toast.makeText(mActivity, "Verbindung hergestellt", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(mActivity, "Verbindung getrennt", Toast.LENGTH_SHORT).show();
+                    //TODO im BuddyManager austragen
+                }
+
+                break;
+            case WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION:
+                // Respond to this device's wifi state changing
+                //muss man hier etwas regeln?
+                break;
         }
     }
+
+
 }
