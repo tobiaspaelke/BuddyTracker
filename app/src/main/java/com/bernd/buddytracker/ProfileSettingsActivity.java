@@ -1,12 +1,16 @@
 package com.bernd.buddytracker;
 
-import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
+import android.support.v7.app.ActionBarActivity;
 import android.view.Menu;
 import android.view.MenuItem;
 
 
 public class ProfileSettingsActivity extends ActionBarActivity {
+    public final static String propNickname = "nick";
+
+    public static String exampleNickName1 = "TestNickName";
+    public static String exampleNickName2 = "Horst";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -36,4 +40,13 @@ public class ProfileSettingsActivity extends ActionBarActivity {
 
         return super.onOptionsItemSelected(item);
     }
+
+    /*public static String getExampleProfilePicture(Context con) {
+        Drawable d = con.getResources().getDrawable(R.drawable.example);
+        Bitmap bitmap = ((BitmapDrawable)d).getBitmap();
+        ByteArrayOutputStream stream = new ByteArrayOutputStream();
+        bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream);
+        byte[] bitmapdata = stream.toByteArray();
+        return Arrays.toString(bitmapdata);
+    }*/
 }
