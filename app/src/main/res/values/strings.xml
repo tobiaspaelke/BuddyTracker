@@ -24,5 +24,6 @@
     <string name="yes">Ja</string>
     <string name="wlanOn">Wlan muss eingeschaltet sein!</string>
     <string name="nameSaved">Name gespeichert</string>
+    <string name="sorry">Tut uns leid, es ist etwas schiefgelaufen...</string>
 
 </resources>
