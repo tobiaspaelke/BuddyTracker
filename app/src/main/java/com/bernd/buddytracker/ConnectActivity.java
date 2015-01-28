@@ -355,7 +355,7 @@ public class ConnectActivity extends ActionBarActivity {
      */
     private void startRegistration() {
         Map<String, String> record = new HashMap<>();
-        record.put(ProfileSettingsActivity.propNickname, ProfileSettingsActivity.exampleNickName1);
+        record.put(ProfileSettingsActivity.propNickname, ProfileSettingsActivity.getNickName());
 
         WifiP2pDnsSdServiceInfo service = WifiP2pDnsSdServiceInfo.newInstance(SERVICE_INSTANCE, SERVICE_REG_TYPE, record);
         mManager.addLocalService(mChannel, service, new WifiP2pManager.ActionListener() {
