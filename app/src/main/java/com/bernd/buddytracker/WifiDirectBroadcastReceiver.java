@@ -70,6 +70,9 @@ public class WifiDirectBroadcastReceiver extends BroadcastReceiver {
                 for (WifiP2pDevice dev : deviceList.getDeviceList()) {
                     if (adapter.updateDevice(dev)) {
                         updated = true;
+                         if (dev.status==WifiP2pDevice.CONNECTED){
+                             BuddyManager.getInstance().addConnectedBuddy(dev);
+                         }
                     }
                 }
 
@@ -82,7 +85,6 @@ public class WifiDirectBroadcastReceiver extends BroadcastReceiver {
                 WifiP2pInfo info = intent.getParcelableExtra(WifiP2pManager.EXTRA_WIFI_P2P_INFO);
                 if (info.groupFormed) {
                     Toast.makeText(mActivity, "Verbindung hergestellt", Toast.LENGTH_SHORT).show();
-                    //TODO in BuddyManager eintragen
                 } else {
                     Toast.makeText(mActivity, "Verbindung getrennt", Toast.LENGTH_SHORT).show();
                     //TODO im BuddyManager austragen

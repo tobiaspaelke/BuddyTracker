@@ -47,25 +47,34 @@ public class WifiP2pDeviceAdapter extends BaseAdapter {
      * @return          gibt True zurück, wenn BuddyInfos geändert wurden
      */
     public boolean updateDevice(WifiP2pDevice dev){
-        AvailableBuddy oldBuddy = null;
         AvailableBuddy updatedBuddy = new AvailableBuddy(dev, null);
-        if (availableBuddies.contains(updatedBuddy)){
-            for (AvailableBuddy tempBud : availableBuddies){
-                if (tempBud.equals(updatedBuddy)){
-                    oldBuddy = tempBud;
-                    break;
-                }
-            }
 
-            if (oldBuddy!=null) {
-                oldBuddy.setMyDev(dev);
-                return true;
-            }else{
-                return false;
-            }
-        }else{
+        int index = availableBuddies.indexOf(updatedBuddy);
+        if (index > -1) {
+            //Liste enthält Buddy
+            AvailableBuddy oldBuddy = availableBuddies.get(index);
+            oldBuddy.setMyDev(dev);
+            return true;
+        } else {
             return false;
         }
+    }
+
+    /**
+     * Gibt zu einem Gerät gehörigen Buddy zurück, wenn er in der Liste enthalten ist
+     *
+     * @param dev   gerät des Buddy
+     * @return      AvailableBuddy der zu dem Device gehört, oder NULL, wenn das Device in der Available Buddy Liste nicht vorkommt
+     */
+    public AvailableBuddy getBuddy(WifiP2pDevice dev){
+        AvailableBuddy searchBuddy = new AvailableBuddy(dev, null);
+        int index = availableBuddies.indexOf(searchBuddy);
+
+        if (index > -1)
+            //Liste enthält Buddy
+            return availableBuddies.get(index);
+
+        return null;
     }
 
     /**
