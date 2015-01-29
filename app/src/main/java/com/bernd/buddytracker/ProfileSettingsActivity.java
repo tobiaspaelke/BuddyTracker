@@ -115,15 +115,6 @@ public class ProfileSettingsActivity extends ActionBarActivity {
         return super.onOptionsItemSelected(item);
     }
 
-    /*public static String getExampleProfilePicture(Context con) {
-        Drawable d = con.getResources().getDrawable(R.drawable.example);
-        Bitmap bitmap = ((BitmapDrawable)d).getBitmap();
-        ByteArrayOutputStream stream = new ByteArrayOutputStream();
-        bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream);
-        byte[] bitmapdata = stream.toByteArray();
-        return Arrays.toString(bitmapdata);
-    }*/
-
     public static String getNickName() {
         return nickName;
     }
@@ -209,6 +200,10 @@ public class ProfileSettingsActivity extends ActionBarActivity {
         takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, fileUri);
 
         startActivityForResult(takePictureIntent, CAMERA_IMAGE_REQUEST);
+    }
+
+    public static Drawable getExampleProfilePicture(Context con) {
+        return con.getResources().getDrawable(R.drawable.example);
     }
 
 }
