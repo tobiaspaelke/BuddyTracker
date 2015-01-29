@@ -25,6 +25,9 @@ import android.widget.Button;
 import android.widget.ListView;
 import android.widget.Toast;
 
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -355,7 +358,7 @@ public class ConnectActivity extends ActionBarActivity {
      */
     private void startRegistration() {
         Map<String, String> record = new HashMap<>();
-        record.put(ProfileSettingsActivity.propNickname, ProfileSettingsActivity.getNickName());
+        record.put(ProfileSettingsActivity.propNickname, getAttributes());
 
         WifiP2pDnsSdServiceInfo service = WifiP2pDnsSdServiceInfo.newInstance(SERVICE_INSTANCE, SERVICE_REG_TYPE, record);
         mManager.addLocalService(mChannel, service, new WifiP2pManager.ActionListener() {
@@ -479,6 +482,22 @@ public class ConnectActivity extends ActionBarActivity {
         });
     }
 
+    private String getAttributes() {
+        try {
+            StringBuilder builder = new StringBuilder();
+            FileInputStream fis = openFileInput(ProfileSettingsActivity.FILENAME);
+            int ch;
+            while ((ch = fis.read()) != -1) {
+                builder.append((char) ch);
+            }
+            return builder.toString();
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return "Standardname";
+    }
 
 
     //Getters

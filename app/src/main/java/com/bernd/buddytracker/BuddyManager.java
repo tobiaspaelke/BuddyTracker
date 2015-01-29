@@ -26,7 +26,7 @@ import java.util.ArrayList;
 public class BuddyManager {
     private static final String TAG = BuddyManager.class.getSimpleName();
     private static int PORT = 8888;
-    private static String CONNECTED_BUDDIES_CHANGED_ACTION = "connectedBuddyListChanged";
+    public static String CONNECTED_BUDDIES_CHANGED_ACTION = "connectedBuddyListChanged";
     private Context context;
 
 
@@ -35,12 +35,16 @@ public class BuddyManager {
 
     private static BuddyManager instance;
 
-    private BuddyManager() {
-        instance = new BuddyManager();
+    private BuddyManager(){
+
     }
 
     public static BuddyManager getInstance() {
-        return instance;
+        if (instance != null) {
+            return instance;
+        } else {
+             return instance = new BuddyManager();
+        }
     }
 
     public void setContext(Context con){
@@ -55,8 +59,8 @@ public class BuddyManager {
         ConnectedBuddy connectedBuddy = new ConnectedBuddy(dev);
         if (!buddyList.contains(connectedBuddy)){
             buddyList.add(connectedBuddy);
-            new ProfilePicServerAsyncTask(context,dev).execute();
-            new ProfilePicClientAsyncTask(dev).execute();
+            new ProfilePicServerAsyncTask(context,dev).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+            new ProfilePicClientAsyncTask(dev).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR,context.getResources().getDrawable(R.drawable.no_image));
         }
     }
 
@@ -118,6 +122,7 @@ public class BuddyManager {
         private WifiP2pDevice dev;
 
         public ProfilePicServerAsyncTask(Context context, WifiP2pDevice dev) {
+            Log.d(TAG, "empfänger konstrukor");
             this.context = context;
             this.dev=dev;
         }
@@ -126,6 +131,7 @@ public class BuddyManager {
         protected Drawable doInBackground(Void... params) {
             ServerSocket serverSocket = null;
             try {
+                Log.d(TAG, "empfänger gestartet");
                 serverSocket = new ServerSocket(PORT);
                 Socket client = serverSocket.accept();
                 /**
@@ -133,16 +139,28 @@ public class BuddyManager {
                  * Save the input stream from the client as a JPEG file
                  */
 
-                ObjectInputStream inputstream = new ObjectInputStream(client.getInputStream());
-                Object receivedObject = inputstream.readObject();
-                if (receivedObject.getClass().equals(Drawable.class))
-                    return (Drawable) receivedObject;
+                ByteArrayOutputStream bos = new ByteArrayOutputStream();
+                byte data[] = new byte[1024];
+                int count;
+
+                while ((count = client.getInputStream().read(data)) != -1)
+                {
+                    bos.write(data, 0, count);
+                }
+
+                bos.flush();
+                bos.close();
+                client.getInputStream().close();
+
+                byte[] bytes = bos.toByteArray();
+
+                ByteArrayInputStream is = new ByteArrayInputStream(bytes);
+                return Drawable.createFromStream(is, "articleImage");
+
 
             } catch (IOException e) {
                 Log.e(TAG, e.getMessage());
                 return null;
-            } catch (ClassNotFoundException e) {
-                e.printStackTrace();
             } finally {
                 try {
                     if (serverSocket!=null)
@@ -151,7 +169,6 @@ public class BuddyManager {
                     e.printStackTrace();
                 }
             }
-            return null;
         }
 
         @Override
@@ -159,9 +176,10 @@ public class BuddyManager {
             ConnectedBuddy buddy = BuddyManager.getInstance().getConnectedBuddy(dev);
             if (buddy!=null){
                 buddy.setProfilePic(result);
+                context.startActivity(new Intent(BuddyManager.CONNECTED_BUDDIES_CHANGED_ACTION));
             }
             //TODO GUI benachrichtigen#
-            context.startActivity(new Intent(BuddyManager.CONNECTED_BUDDIES_CHANGED_ACTION));
+
         }
     }
 
@@ -170,27 +188,36 @@ public class BuddyManager {
         private WifiP2pDevice dev;
 
         public ProfilePicClientAsyncTask(WifiP2pDevice dev) {
+            Log.d(TAG, "Senden Konstruktor");
             this.dev = dev;
         }
 
         @Override
         protected Void doInBackground(Drawable... drawables) {
+            Log.d(TAG,"sender gestartet");
             String host;
             int port;
             int len;
             Socket socket = new Socket();
             byte buf[]  = new byte[1024];
 
-            //TODO nullcheck
             Drawable d = drawables[0];
+            if (d==null){
+                Log.d(TAG, "drawable war null");
+            }
 
             try {
                 /**
                  * Create a client socket with the host,
                  * port, and timeout information.
                  */
+
+                Log.d(TAG, "gleich wird sich zum empfänger verbunden");
                 socket.bind(null);
+                //TODO abgefahrenen mist abziehen um an die ip adresse zu kommen
                 socket.connect((new InetSocketAddress(dev.deviceAddress, PORT)), 500);
+                Log.d(TAG, "zum empfänger verbunden");
+
 
                 /**
                  * Create a byte stream from a JPEG file and pipe it to the output stream
@@ -210,10 +237,11 @@ public class BuddyManager {
 
                 outputStream.close();
                 inputStream.close();
+                Log.d(TAG, "senden abgeschlossen");
             } catch (FileNotFoundException e) {
-                //catch logic
+                e.printStackTrace();
             } catch (IOException e) {
-                //catch logic
+                e.printStackTrace();
             }
 
             /**
@@ -226,7 +254,7 @@ public class BuddyManager {
                         try {
                             socket.close();
                         } catch (IOException e) {
-                            //catch logic
+                            e.printStackTrace();
                         }
                     }
                 }

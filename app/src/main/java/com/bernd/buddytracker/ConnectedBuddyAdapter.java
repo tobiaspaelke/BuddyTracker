@@ -41,10 +41,11 @@ public class ConnectedBuddyAdapter extends BaseAdapter{
 
         if (convertView == null) {
             //Layoutdatei entfalten
-            convertView = inflator.inflate(R.layout.item_peer_text_only, parent, false);
+            convertView = inflator.inflate(R.layout.item_connectedbuddy, parent, false);
 
             //Holder erzeugen(kommentierte Klasse weiter unten im code)
             holder = new ViewHolder();
+
             holder.icon = (ImageView) convertView.findViewById(R.id.item_cB_icon);
             holder.nickName = (TextView) convertView.findViewById(R.id.item_cB_nick);
             holder.status = (TextView) convertView.findViewById(R.id.item_cB_status);

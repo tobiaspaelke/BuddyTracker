@@ -16,6 +16,7 @@ public class MainActivity extends ActionBarActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        BuddyManager.getInstance().setContext(this);
 
         Button btn_connect = (Button) findViewById(R.id.btn_connect);
         btn_connect.setOnClickListener(new View.OnClickListener() {
