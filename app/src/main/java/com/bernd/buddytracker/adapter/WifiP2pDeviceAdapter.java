@@ -1,4 +1,4 @@
-package com.bernd.buddytracker;
+package com.bernd.buddytracker.adapter;
 
 import android.content.Context;
 import android.net.wifi.p2p.WifiP2pDevice;
@@ -8,10 +8,12 @@ import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.TextView;
 
+import com.bernd.buddytracker.R;
+
 import java.util.ArrayList;
 
 /**
- * Adapter um mit discoverPeers() gefundene Peers in der {@link com.bernd.buddytracker.ConnectActivity} richtig anzuzeigen
+ * Adapter um mit discoverPeers() gefundene Peers in der {@link com.bernd.buddytracker.activity.ConnectActivity} richtig anzuzeigen
  *
  * Created by Alex on 22.01.2015.
  */
@@ -193,10 +195,7 @@ public class WifiP2pDeviceAdapter extends BaseAdapter {
 
         @Override
         public boolean equals(Object obj) {
-            /*if (obj.getClass().equals(WifiP2pDevice.class)){
-                WifiP2pDevice dev = (WifiP2pDevice) obj;
-                return dev.deviceAddress.equals(myDev.deviceAddress);
-            }else*/ if (obj.getClass().equals(AvailableBuddy.class)) {
+            if (obj.getClass().equals(AvailableBuddy.class)) {
                 AvailableBuddy buddy = (AvailableBuddy) obj;
                 return buddy.getMyDev().deviceAddress.equals(myDev.deviceAddress);
             }else{
