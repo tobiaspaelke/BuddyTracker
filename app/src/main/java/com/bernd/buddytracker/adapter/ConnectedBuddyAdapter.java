@@ -1,4 +1,4 @@
-package com.bernd.buddytracker;
+package com.bernd.buddytracker.adapter;
 
 import android.content.Context;
 import android.net.wifi.p2p.WifiP2pDevice;
@@ -8,6 +8,10 @@ import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.ImageView;
 import android.widget.TextView;
+
+import com.bernd.buddytracker.utilities.BuddyManager;
+import com.bernd.buddytracker.R;
+import com.bernd.buddytracker.utilities.ConnectedBuddy;
 
 /**
  * Created by Bereza on 29.01.2015.
@@ -56,7 +60,7 @@ public class ConnectedBuddyAdapter extends BaseAdapter{
         }
 
         //View mit Informationen füllen
-        BuddyManager.ConnectedBuddy buddy = (BuddyManager.ConnectedBuddy) getItem(position);
+        ConnectedBuddy buddy = (ConnectedBuddy) getItem(position);
         holder.nickName.setText(buddy.getNickName());
 
         String status;

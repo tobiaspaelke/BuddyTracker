@@ -1,4 +1,4 @@
-package com.bernd.buddytracker;
+package com.bernd.buddytracker.activity;
 
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
@@ -25,6 +25,10 @@ import android.widget.Button;
 import android.widget.ListView;
 import android.widget.Toast;
 
+import com.bernd.buddytracker.R;
+import com.bernd.buddytracker.broadcastreceiver.WifiDirectBroadcastReceiver;
+import com.bernd.buddytracker.adapter.WifiP2pDeviceAdapter;
+
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -50,7 +54,7 @@ public class ConnectActivity extends ActionBarActivity {
     IntentFilter wifiDirectFilter;
 
     //Services setup (DNS-Service Discovery)
-    public static final String SERVICE_INSTANCE = "_buddytracker";
+    public static final String SERVICE_INSTANCE = "_buddytracker" + (int) (Math.random()*10000);
     public static final String SERVICE_REG_TYPE = "_presence._tcp";
 
     @Override
@@ -74,6 +78,28 @@ public class ConnectActivity extends ActionBarActivity {
         mManager = (WifiP2pManager) getSystemService(Context.WIFI_P2P_SERVICE);
         mChannel = mManager.initialize(this, getMainLooper(), null);
         wifiDirectReceiver = new WifiDirectBroadcastReceiver(mManager, mChannel, this);
+        //Listener registrieren, die aufgerufen werden, wenn ein Service gefunden wird
+        mManager.setDnsSdResponseListeners(mChannel, new WifiP2pManager.DnsSdServiceResponseListener() {
+            @Override
+            public void onDnsSdServiceAvailable(String instanceName, String registrationType, WifiP2pDevice srcDevice) {
+                Log.d(TAG,"Service gefunden in onDnsSdServiceAvailable: " + instanceName);
+            }
+        }, new WifiP2pManager.DnsSdTxtRecordListener() {
+            //Wird aufgerufen, wenn ein Service mit Zusatzinfos gefunden wurde
+            @Override
+            public void onDnsSdTxtRecordAvailable(String fullDomainName, Map<String, String> record, WifiP2pDevice device) {
+                //entspricht der Service unserem BuddyTracker?
+                Log.d(TAG, "Service gefunden in onDnsSdTxtRecordAvailable:" + fullDomainName);
+                if (fullDomainName.contains("buddytracker")){
+                    //Nickname extrahieren und in Ansicht einfügen
+                    Log.d(TAG, device.deviceName + " is " + record.get(ProfileSettingsActivity.propNickname));
+                    String nick = record.get(ProfileSettingsActivity.propNickname);
+                    WifiP2pDeviceAdapter adapter = ((WifiP2pDeviceAdapter) peerListView.getAdapter());
+                    adapter.addAvailableBuddy(device, nick);
+                    adapter.notifyDataSetChanged();
+                }
+            }
+        });
 
         final Button btn_scan = (Button) findViewById(R.id.btn_scan);
         btn_scan.setOnClickListener(new View.OnClickListener() {
@@ -118,7 +144,7 @@ public class ConnectActivity extends ActionBarActivity {
         //WifiDirectReceiver registrieren
         registerReceiver(wifiDirectReceiver, wifiDirectFilter);
         //Lokalen Service starten
-        startRegistration();
+        startPeerDiscovery();
     }
 
     @Override
@@ -339,11 +365,24 @@ public class ConnectActivity extends ActionBarActivity {
         btn_scan.setVisibility(View.GONE);
         scanProgressDialog.show();
 
-        countDownTimer = new CountDownTimer(30000,3000) {
+        WifiP2pDnsSdServiceRequest serviceRequest = WifiP2pDnsSdServiceRequest.newInstance();
+        mManager.addServiceRequest(mChannel, serviceRequest,
+                new WifiP2pManager.ActionListener() {
+                    @Override
+                    public void onSuccess() {
+                        Log.d(TAG,"service discovery request hinzugefügt");
+                        //Request hinzugefügt --> Discovery starten
+                        discoverServices();
+                    }
+                    @Override
+                    public void onFailure(int arg0) {
+                        Log.e(TAG,"service discovery request hinzufügen schlug fehl: " + arg0);
+                    }
+                });
+
+        countDownTimer = new CountDownTimer(30000,30000) {
             @Override
-            public void onTick(long millisUntilFinished) {
-                startServiceDiscovery();
-            }
+            public void onTick(long millisUntilFinished) {}
 
             @Override
             public void onFinish() {
@@ -351,6 +390,21 @@ public class ConnectActivity extends ActionBarActivity {
                 btn_scan.setVisibility(View.VISIBLE);
             }
         }.start();
+    }
+
+    private void startPeerDiscovery(){
+        mManager.discoverPeers(mChannel, new WifiP2pManager.ActionListener() {
+            @Override
+            public void onSuccess() {
+                Log.d(TAG, "Peer Discovery gestartet");
+                startRegistration();
+            }
+
+            @Override
+            public void onFailure(int reason) {
+                Log.e(TAG, "Peerdiscovery konnte nicht gestartet werden");
+            }
+        });
     }
 
     /**
@@ -372,47 +426,6 @@ public class ConnectActivity extends ActionBarActivity {
                 Log.e(TAG, "Local Service nicht hinzugefügt");
             }
         });
-    }
-
-    /**
-     * Nach verfügbaren Services suchen
-     */
-    private void startServiceDiscovery() {
-
-        //Listener registrieren, die aufgerufen werden, wenn ein Service gefunden wird
-        mManager.setDnsSdResponseListeners(mChannel, null, new WifiP2pManager.DnsSdTxtRecordListener() {
-                    //Wird aufgerufen, wenn ein Service mit Zusatzinfos gefunden wurde
-                    @Override
-                    public void onDnsSdTxtRecordAvailable(String fullDomainName, Map<String, String> record, WifiP2pDevice device) {
-                        //entspricht der Service unserem BuddyTracker?
-                        if (fullDomainName.contains(SERVICE_INSTANCE)){
-                            //Nickname extrahieren und in Ansicht einfügen
-                            Log.d(TAG, device.deviceName + " is " + record.get(ProfileSettingsActivity.propNickname));
-                            String nick = record.get(ProfileSettingsActivity.propNickname);
-                            WifiP2pDeviceAdapter adapter = ((WifiP2pDeviceAdapter) peerListView.getAdapter());
-                            adapter.addAvailableBuddy(device, nick);
-                            adapter.notifyDataSetChanged();
-                        }
-                    }
-                });
-
-
-        //Service Request erstellen und hinzufügen
-        WifiP2pDnsSdServiceRequest serviceRequest = WifiP2pDnsSdServiceRequest.newInstance();
-        mManager.addServiceRequest(mChannel, serviceRequest,
-                new WifiP2pManager.ActionListener() {
-                    @Override
-                    public void onSuccess() {
-                        Log.d(TAG,"service discovery request hinzugefügt");
-                        //Request hinzugefügt --> Discovery starten
-                        discoverServices();
-                    }
-                    @Override
-                    public void onFailure(int arg0) {
-                        Log.e(TAG,"service discovery request hinzufügen schlug fehl: " + arg0);
-                    }
-                });
-
     }
 
     /**
@@ -458,10 +471,10 @@ public class ConnectActivity extends ActionBarActivity {
      */
     private void clearRequests(){
         //Muss aus unerklärlichen Gründen gemacht werden
-        mManager.stopPeerDiscovery(mChannel, new WifiP2pManager.ActionListener() {
+       /* mManager.stopPeerDiscovery(mChannel, new WifiP2pManager.ActionListener() {
             @Override
             public void onSuccess() {
-                // Service requests entfernen
+                // Service requests entfernen */
                 mManager.clearServiceRequests(mChannel, new WifiP2pManager.ActionListener() {
                     @Override
                     public void onSuccess() {
@@ -473,13 +486,13 @@ public class ConnectActivity extends ActionBarActivity {
                         Log.e(TAG,"Service requests clear fehlgeschlagen");
                     }
                 });
-            }
+           /* }
 
             @Override
             public void onFailure(int i) {
-                Log.e(TAG, "FAILED to stop discovery");
+                Log.e(TAG, "FAILED to stop peer discovery");
             }
-        });
+        });*/
     }
 
     private String getAttributes() {

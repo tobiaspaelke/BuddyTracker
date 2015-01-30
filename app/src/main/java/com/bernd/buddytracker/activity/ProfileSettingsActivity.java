@@ -1,9 +1,8 @@
-package com.bernd.buddytracker;
+package com.bernd.buddytracker.activity;
 
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
-import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
@@ -17,6 +16,9 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.Toast;
+
+import com.bernd.buddytracker.utilities.GetImageThumbnail;
+import com.bernd.buddytracker.R;
 
 import java.io.File;
 import java.io.FileInputStream;

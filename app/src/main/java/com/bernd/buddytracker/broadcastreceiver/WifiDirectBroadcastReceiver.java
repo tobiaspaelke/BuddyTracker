@@ -1,4 +1,4 @@
-package com.bernd.buddytracker;
+package com.bernd.buddytracker.broadcastreceiver;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -9,6 +9,10 @@ import android.net.wifi.p2p.WifiP2pDeviceList;
 import android.net.wifi.p2p.WifiP2pInfo;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.widget.Toast;
+
+import com.bernd.buddytracker.activity.ConnectActivity;
+import com.bernd.buddytracker.adapter.WifiP2pDeviceAdapter;
+import com.bernd.buddytracker.utilities.BuddyManager;
 
 /**
  * Broadcastreceiver für die Connectactivity
@@ -72,6 +76,8 @@ public class WifiDirectBroadcastReceiver extends BroadcastReceiver {
                         updated = true;
                          if (dev.status==WifiP2pDevice.CONNECTED){
                              BuddyManager.getInstance().addConnectedBuddy(dev);
+                             String nick = adapter.getBuddy(dev).getNickname();
+                             BuddyManager.getInstance().getConnectedBuddy(dev).setNickName(nick);
                          }
                     }
                 }

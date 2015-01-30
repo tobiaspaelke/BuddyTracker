@@ -1,4 +1,4 @@
-package com.bernd.buddytracker;
+package com.bernd.buddytracker.utilities;
 
 import android.content.Context;
 import android.content.Intent;
@@ -13,7 +13,6 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
@@ -59,61 +58,22 @@ public class BuddyManager {
         ConnectedBuddy connectedBuddy = new ConnectedBuddy(dev);
         if (!buddyList.contains(connectedBuddy)){
             buddyList.add(connectedBuddy);
-            new ProfilePicServerAsyncTask(context,dev).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
-            new ProfilePicClientAsyncTask(dev).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR,context.getResources().getDrawable(R.drawable.no_image));
+            //new ProfilePicServerAsyncTask(context,dev).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+            //new ProfilePicClientAsyncTask(dev).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, context.getResources().getDrawable(R.drawable.no_image));
         }
-    }
-
-    public ConnectedBuddy getConnectedBuddy(WifiP2pDevice dev){
-        int index = buddyList.indexOf(dev);
-        if (index > -1){
-            return buddyList.get(index);
-        }
-        return null;
     }
 
     public ConnectedBuddy getConnectedBuddy(int position){
         return buddyList.get(position);
     }
 
-    public static class ConnectedBuddy {
-        private WifiP2pDevice dev;
-        private Drawable profilePic;
-        private String nickName;
-
-        public ConnectedBuddy(WifiP2pDevice dev){
-            this.dev=dev;
+    public ConnectedBuddy getConnectedBuddy(WifiP2pDevice dev){
+        ConnectedBuddy searchbuddy = new ConnectedBuddy(dev);
+        int index = buddyList.indexOf(searchbuddy);
+        if (index > -1){
+            return buddyList.get(index);
         }
-
-        public WifiP2pDevice getDev() {
-            return dev;
-        }
-
-        public Drawable getProfilePic() {
-            return profilePic;
-        }
-
-        public void setProfilePic(Drawable profilePic) {
-            this.profilePic = profilePic;
-        }
-
-        public String getNickName() {
-            return nickName;
-        }
-
-        public void setNickName(String nickName) {
-            this.nickName = nickName;
-        }
-
-        @Override
-        public boolean equals(Object o){
-            if (o.getClass().equals(WifiP2pDevice.class)){
-                WifiP2pDevice dev = (WifiP2pDevice) o;
-                return this.getDev().deviceAddress.equals(dev.deviceAddress);
-            }
-            return false;
-        }
-
+        return null;
     }
 
     //empfangen

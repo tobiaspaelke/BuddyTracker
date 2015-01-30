@@ -1,6 +1,5 @@
-package com.bernd.buddytracker;
+package com.bernd.buddytracker.activity;
 
-import android.app.Activity;
 import android.app.ListActivity;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -10,8 +9,10 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.widget.Adapter;
-import android.widget.ListView;
+
+import com.bernd.buddytracker.R;
+import com.bernd.buddytracker.adapter.ConnectedBuddyAdapter;
+import com.bernd.buddytracker.utilities.BuddyManager;
 
 
 public class CheckStatusActivity extends ListActivity {
@@ -23,20 +24,16 @@ public class CheckStatusActivity extends ListActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        //setContentView(R.layout.activity_check_status);
-
         getListView().setAdapter(new ConnectedBuddyAdapter(this));
-
         intentFilter = new IntentFilter(BuddyManager.CONNECTED_BUDDIES_CHANGED_ACTION);
-
-
-        //TODO broadcastreceiver für buddy list changed
     }
 
     @Override
     protected void onResume() {
         super.onResume();
         registerReceiver(receiver = new BuddyListReceiver(this),intentFilter);
+        ConnectedBuddyAdapter adapter = (ConnectedBuddyAdapter) getListView().getAdapter();
+        adapter.notifyDataSetChanged();
     }
 
     protected void onPause(){

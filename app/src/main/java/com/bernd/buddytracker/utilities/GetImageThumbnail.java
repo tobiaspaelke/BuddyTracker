@@ -1,4 +1,4 @@
-package com.bernd.buddytracker;
+package com.bernd.buddytracker.utilities;
 
 import android.content.Context;
 import android.graphics.Bitmap;
